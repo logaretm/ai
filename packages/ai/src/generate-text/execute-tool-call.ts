@@ -12,6 +12,7 @@ import {
   getToolTimeoutMs,
   type TimeoutConfiguration,
 } from '../prompt/request-options';
+import { trace } from '../telemetry/tracing-channel';
 import { mergeAbortSignals } from '../util/merge-abort-signals';
 import { notify } from '../util/notify';
 import { now } from '../util/now';
@@ -112,41 +113,43 @@ export async function executeToolCall<TOOLS extends ToolSet>({
     //
     // The call id and the tool call id are provided to the telemetry integration so that it can correctly
     // identify the parent span.
-    await executeToolInTelemetryContext({
-      callId,
-      toolCallId,
-      execute: async () => {
-        const startTime = now();
-        try {
-          const stream = executeTool({
-            tool,
-            input: input as InferToolInput<typeof tool>,
-            options: {
-              toolCallId,
-              messages,
-              abortSignal: toolAbortSignal,
-              context,
-              experimental_sandbox: sandbox,
-            },
-          });
+    await trace({ type: 'toolExecution', callId, toolCallId }, () =>
+      executeToolInTelemetryContext({
+        callId,
+        toolCallId,
+        execute: async () => {
+          const startTime = now();
+          try {
+            const stream = executeTool({
+              tool,
+              input: input as InferToolInput<typeof tool>,
+              options: {
+                toolCallId,
+                messages,
+                abortSignal: toolAbortSignal,
+                context,
+                experimental_sandbox: sandbox,
+              },
+            });
 
-          for await (const part of stream) {
-            if (part.type === 'preliminary') {
-              onPreliminaryToolResult?.({
-                ...toolCall,
-                type: 'tool-result',
-                output: part.output,
-                preliminary: true,
-              });
-            } else {
-              output = part.output;
+            for await (const part of stream) {
+              if (part.type === 'preliminary') {
+                onPreliminaryToolResult?.({
+                  ...toolCall,
+                  type: 'tool-result',
+                  output: part.output,
+                  preliminary: true,
+                });
+              } else {
+                output = part.output;
+              }
             }
+          } finally {
+            toolExecutionMs = now() - startTime;
           }
-        } finally {
-          toolExecutionMs = now() - startTime;
-        }
-      },
-    });
+        },
+      }),
+    );
   } catch (error) {
     const toolError = {
       type: 'tool-error',

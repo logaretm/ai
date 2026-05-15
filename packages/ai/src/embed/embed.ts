@@ -7,6 +7,7 @@ import { logWarnings } from '../logger/log-warnings';
 import { resolveEmbeddingModel } from '../model/resolve-model';
 import { createTelemetryDispatcher } from '../telemetry/create-telemetry-dispatcher';
 import type { TelemetryOptions } from '../telemetry/telemetry-options';
+import { trace } from '../telemetry/tracing-channel';
 import type { EmbeddingModel } from '../types';
 import type { Callback } from '../util/callback';
 import { notify } from '../util/notify';
@@ -166,12 +167,14 @@ export async function embed({
           callbacks: [telemetryDispatcher.onEmbedStart],
         });
 
-        const modelResponse = await model.doEmbed({
-          values: [value],
-          abortSignal,
-          headers: headersWithUserAgent,
-          providerOptions,
-        });
+        const modelResponse = await trace({ type: 'embed', callId }, () =>
+          model.doEmbed({
+            values: [value],
+            abortSignal,
+            headers: headersWithUserAgent,
+            providerOptions,
+          }),
+        );
 
         const embedding = modelResponse.embeddings[0];
         const usage = modelResponse.usage ?? { tokens: NaN };

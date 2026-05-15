@@ -35,6 +35,7 @@ import {
   type AsyncIterableStream,
 } from '../util/async-iterable-stream';
 import type { DownloadFunction } from '../util/download/download-function';
+import { trace } from '../telemetry/tracing-channel';
 import { notify } from '../util/notify';
 import { now as originalNow } from '../util/now';
 import { calculateTokensPerSecond } from './calculate-tokens-per-second';
@@ -246,7 +247,6 @@ export async function streamLanguageModelCall<
   };
   onLanguageModelCallStart?: Arrayable<OnLanguageModelCallStartCallback>;
   onLanguageModelCallEnd?: Arrayable<OnLanguageModelCallEndCallback<TOOLS>>;
-
   // onStart is currently required because the telemetry callbacks need
   // LanguageModelV4Prompt and we only want download URLs at most once.
   // Therefore convertToLanguageModelPrompt can only be called once
@@ -329,17 +329,21 @@ export async function streamLanguageModelCall<
     stream: languageModelStream,
     response,
     request,
-  } = await resolvedModel.doStream({
-    ...callSettings,
-    tools: stepTools,
-    toolChoice: stepToolChoice,
-    responseFormat: await output?.responseFormat,
-    prompt: promptMessages,
-    providerOptions,
-    abortSignal,
-    headers,
-    includeRawChunks,
-  });
+  } = await trace(
+    { type: 'languageModelCall', callId: effectiveCallId },
+    async () =>
+      resolvedModel.doStream({
+        ...callSettings,
+        tools: stepTools,
+        toolChoice: stepToolChoice,
+        responseFormat: await output?.responseFormat,
+        prompt: promptMessages,
+        providerOptions,
+        abortSignal,
+        headers,
+        includeRawChunks,
+      }),
+  );
 
   const standardizedStream = languageModelStream.pipeThrough(
     createLanguageModelV4StreamPartToLanguageModelStreamPartTransform({

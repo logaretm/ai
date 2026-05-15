@@ -6,8 +6,6 @@ import type {
   Telemetry,
   TelemetryDispatcher,
 } from './telemetry';
-import { type TelemetryDiagnosticEventType } from './diagnostic-channel';
-import { publishTelemetryDiagnosticChannelMessage } from './diagnostic-channel-publisher';
 import { getGlobalTelemetryIntegrations } from './telemetry-registry';
 import type { TelemetryOptions } from './telemetry-options';
 
@@ -62,10 +60,7 @@ export function createTelemetryDispatcher({
   telemetry,
 }: {
   telemetry?: TelemetryOptions;
-  // operationId: string;
 }): TelemetryDispatcher {
-  // When telemetry is explicitly disabled, return a dispatcher
-  // that performs no work and lets tool execution pass through unwrapped.
   if (telemetry?.isEnabled === false) {
     return {};
   }
@@ -85,32 +80,24 @@ export function createTelemetryDispatcher({
   const mergeTelemetryCallback = <KEY extends TelemetryCallbackKey>(
     key: KEY,
   ): Callback<TelemetryEvent<KEY>> => {
-    // event data is now automatically published to the diagnostic channel
-    const publishDiagnosticChannelMessage = ((event: TelemetryEvent<KEY>) =>
-      publishTelemetryDiagnosticChannelMessage({
-        type: key as TelemetryDiagnosticEventType,
-        event: augmentEvent(event, telemetryMetadata),
-      })) as Callback<TelemetryEvent<KEY>>;
-
-    return mergeCallbacks(
-      publishDiagnosticChannelMessage,
-      ...(
-        integrations
-          .map(integration => integration[key]?.bind(integration))
-          .filter(Boolean) as Array<
-          Callback<InferTelemetryEvent<TelemetryEvent<KEY>>>
-        >
-      ).map(
-        callback =>
-          ((event: TelemetryEvent<KEY>) =>
-            callback(augmentEvent(event, telemetryMetadata))) as Callback<
-            TelemetryEvent<KEY>
-          >,
-      ),
+    const integrationCallbacks = (
+      integrations
+        .map(integration => integration[key]?.bind(integration))
+        .filter(Boolean) as Array<
+        Callback<InferTelemetryEvent<TelemetryEvent<KEY>>>
+      >
+    ).map(
+      callback =>
+        ((event: TelemetryEvent<KEY>) =>
+          callback(augmentEvent(event, telemetryMetadata))) as Callback<
+          TelemetryEvent<KEY>
+        >,
     );
+
+    return mergeCallbacks(...integrationCallbacks);
   };
 
-  const executeWrappers = integrations
+  const executeToolWrappers = integrations
     .map(integration => integration.executeTool?.bind(integration))
     .filter(Boolean) as Array<NonNullable<Telemetry['executeTool']>>;
 
@@ -140,10 +127,10 @@ export function createTelemetryDispatcher({
      * delegating to the underlying tool.
      */
     executeTool:
-      executeWrappers.length > 0
+      executeToolWrappers.length > 0
         ? async args => {
             let execute = args.execute;
-            for (const executeWrapper of executeWrappers) {
+            for (const executeWrapper of executeToolWrappers) {
               const innerExecute = execute;
               execute = () =>
                 executeWrapper({ ...args, execute: innerExecute });

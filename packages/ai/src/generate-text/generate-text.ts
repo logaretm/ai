@@ -39,6 +39,7 @@ import { standardizePrompt } from '../prompt/standardize-prompt';
 import { wrapGatewayError } from '../prompt/wrap-gateway-error';
 import type { Telemetry } from '../telemetry/telemetry';
 import type { TelemetryOptions } from '../telemetry/telemetry-options';
+import { trace } from '../telemetry/tracing-channel';
 import type {
   LanguageModel,
   LanguageModelRequestMetadata,
@@ -772,28 +773,32 @@ export async function generateText<
 
         const stepStartTimestampMs = now();
 
-        currentModelResponse = await retry(async () => {
-          const result = await stepModel.doGenerate({
-            ...callSettings,
-            tools: stepTools,
-            toolChoice: stepToolChoice,
-            responseFormat: await output?.responseFormat,
-            prompt: promptMessages,
-            providerOptions: stepProviderOptions,
-            abortSignal: mergedAbortSignal,
-            headers: headersWithUserAgent,
-          });
+        currentModelResponse = await trace(
+          { type: 'languageModelCall', callId },
+          () =>
+            retry(async () => {
+              const result = await stepModel.doGenerate({
+                ...callSettings,
+                tools: stepTools,
+                toolChoice: stepToolChoice,
+                responseFormat: await output?.responseFormat,
+                prompt: promptMessages,
+                providerOptions: stepProviderOptions,
+                abortSignal: mergedAbortSignal,
+                headers: headersWithUserAgent,
+              });
 
-          const responseData = {
-            id: result.response?.id ?? generateId(),
-            timestamp: result.response?.timestamp ?? new Date(),
-            modelId: result.response?.modelId ?? stepModel.modelId,
-            headers: result.response?.headers,
-            body: result.response?.body,
-          };
+              const responseData = {
+                id: result.response?.id ?? generateId(),
+                timestamp: result.response?.timestamp ?? new Date(),
+                modelId: result.response?.modelId ?? stepModel.modelId,
+                headers: result.response?.headers,
+                body: result.response?.body,
+              };
 
-          return { ...result, response: responseData };
-        });
+              return { ...result, response: responseData };
+            }),
+        );
         const responseTimeMs = now() - stepStartTimestampMs;
         const stepUsage = asLanguageModelUsage(currentModelResponse.usage);
 

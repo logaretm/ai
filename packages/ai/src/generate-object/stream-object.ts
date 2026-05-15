@@ -24,6 +24,7 @@ import type { Prompt } from '../prompt/prompt';
 import { standardizePrompt } from '../prompt/standardize-prompt';
 import { wrapGatewayError } from '../prompt/wrap-gateway-error';
 import { createTelemetryDispatcher } from '../telemetry/create-telemetry-dispatcher';
+import { trace } from '../telemetry/tracing-channel';
 import type { TelemetryOptions } from '../telemetry/telemetry-options';
 import { createTextStreamResponse } from '../text-stream/create-text-stream-response';
 import { pipeTextStreamToResponse } from '../text-stream/pipe-text-stream-to-response';
@@ -604,8 +605,9 @@ class DefaultStreamObjectResult<
       };
 
       const startTimestampMs = now();
-      const { stream, response, request } = await retry(() =>
-        model.doStream(callOptions),
+      const { stream, response, request } = await trace(
+        { type: 'objectStep', callId },
+        () => retry(() => model.doStream(callOptions)),
       );
 
       self._request.resolve(request ?? {});

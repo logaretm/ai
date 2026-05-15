@@ -8,6 +8,7 @@ import { logWarnings } from '../logger/log-warnings';
 import { resolveRerankingModel } from '../model/resolve-model';
 import { createTelemetryDispatcher } from '../telemetry/create-telemetry-dispatcher';
 import type { TelemetryOptions } from '../telemetry/telemetry-options';
+import { trace } from '../telemetry/tracing-channel';
 import type { RerankingModel } from '../types';
 import type { Callback } from '../util/callback';
 import { notify } from '../util/notify';
@@ -223,14 +224,16 @@ export async function rerank<VALUE extends JSONObject | string>({
           callbacks: [telemetryDispatcher.onRerankStart],
         });
 
-        const modelResponse = await model.doRerank({
-          documents: documentsToSend,
-          query,
-          topN,
-          providerOptions,
-          abortSignal,
-          headers,
-        });
+        const modelResponse = await trace({ type: 'rerank', callId }, () =>
+          model.doRerank({
+            documents: documentsToSend,
+            query,
+            topN,
+            providerOptions,
+            abortSignal,
+            headers,
+          }),
+        );
 
         const ranking = modelResponse.ranking;
 
