@@ -1,5 +1,3 @@
-import { isNodeRuntime } from '../util/is-node-runtime';
-
 type TracingChannelLike = {
   hasSubscribers: boolean;
   tracePromise(
@@ -10,19 +8,32 @@ type TracingChannelLike = {
   ): PromiseLike<any>;
 };
 
-let channelCache: Promise<Record<string, any> | undefined> | undefined;
+let dcPromise: Promise<Record<string, any> | undefined> | undefined;
 
+// Try sync load via getBuiltinModule (bundler-invisible, works in
+// Node 22.3+, Deno, Bun 1.2.7+, Cloudflare Workers).
+// Fall back to async dynamic import for older runtimes.
+// Swallow all errors — undefined means diagnostics_channel is unavailable.
 async function loadDiagnosticsChannelModule(): Promise<
   Record<string, any> | undefined
 > {
-  if (!isNodeRuntime()) return undefined;
-  if (channelCache == null) {
-    channelCache = import(
+  try {
+    if (
+      typeof process !== 'undefined' &&
+      typeof (process as any).getBuiltinModule === 'function'
+    ) {
+      const dc = (process as any).getBuiltinModule('node:diagnostics_channel');
+      if (dc != null) return dc;
+    }
+  } catch {}
+
+  if (dcPromise == null) {
+    dcPromise = import(
       /* webpackIgnore: true */
       'node:diagnostics_channel'
     ).catch(() => undefined);
   }
-  return channelCache;
+  return dcPromise;
 }
 
 export const AI_SDK_TRACING_CHANNEL = 'aisdk:telemetry';
