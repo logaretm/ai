@@ -38,6 +38,7 @@ async function loadDiagnosticsChannelModule(): Promise<
 
 export const AI_SDK_TRACING_CHANNEL = 'aisdk:telemetry';
 
+// null means diagnostics_channel is unavailable, so we skip future resolve attempts.
 let channel: TracingChannelLike | undefined | null;
 
 async function getChannel(): Promise<TracingChannelLike | undefined> {
