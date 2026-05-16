@@ -41,13 +41,14 @@ export const AI_SDK_TRACING_CHANNEL = 'aisdk:telemetry';
 let channel: TracingChannelLike | undefined | null;
 
 async function getChannel(): Promise<TracingChannelLike | undefined> {
-  if (channel === undefined) {
-    const dc = await loadDiagnosticsChannelModule();
-    channel =
-      typeof dc?.tracingChannel === 'function'
-        ? (dc.tracingChannel(AI_SDK_TRACING_CHANNEL) as TracingChannelLike)
-        : null;
-  }
+  if (channel !== undefined) return channel ?? undefined;
+
+  const dc = await loadDiagnosticsChannelModule();
+  channel =
+    typeof dc?.tracingChannel === 'function'
+      ? (dc.tracingChannel(AI_SDK_TRACING_CHANNEL) as TracingChannelLike)
+      : null;
+
   return channel ?? undefined;
 }
 
