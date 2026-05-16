@@ -606,7 +606,7 @@ class DefaultStreamObjectResult<
 
       const startTimestampMs = now();
       const { stream, response, request } = await trace(
-        { type: 'objectStep', callId },
+        () => ({ type: 'objectStep', callId }),
         () => retry(() => model.doStream(callOptions)),
       );
 

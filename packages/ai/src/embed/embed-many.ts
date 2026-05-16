@@ -189,13 +189,15 @@ export async function embedMany({
             callbacks: [telemetryDispatcher.onEmbedStart],
           });
 
-          const modelResponse = await trace({ type: 'embed', callId }, () =>
-            model.doEmbed({
-              values,
-              abortSignal,
-              headers: headersWithUserAgent,
-              providerOptions,
-            }),
+          const modelResponse = await trace(
+            () => ({ type: 'embed', callId }),
+            () =>
+              model.doEmbed({
+                values,
+                abortSignal,
+                headers: headersWithUserAgent,
+                providerOptions,
+              }),
           );
 
           const embeddings = modelResponse.embeddings;
@@ -293,13 +295,15 @@ export async function embedMany({
               callbacks: [telemetryDispatcher.onEmbedStart],
             });
 
-            const modelResponse = await trace({ type: 'embed', callId }, () =>
-              model.doEmbed({
-                values: chunk,
-                abortSignal,
-                headers: headersWithUserAgent,
-                providerOptions,
-              }),
+            const modelResponse = await trace(
+              () => ({ type: 'embed', callId }),
+              () =>
+                model.doEmbed({
+                  values: chunk,
+                  abortSignal,
+                  headers: headersWithUserAgent,
+                  providerOptions,
+                }),
             );
 
             const chunkEmbeddings = modelResponse.embeddings;

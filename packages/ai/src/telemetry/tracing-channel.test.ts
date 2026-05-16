@@ -30,7 +30,7 @@ describe('tracing channel context propagation', () => {
     let captured: { spanId: string } | undefined;
 
     const result = await trace(
-      { type: 'languageModelCall', callId: 'call-1' },
+      () => ({ type: 'languageModelCall', callId: 'call-1' }),
       async () => {
         captured = store.getStore();
         return 'model-result';
@@ -64,7 +64,7 @@ describe('tracing channel context propagation', () => {
     let captured: { spanId: string } | undefined;
 
     const result = await trace(
-      { type: 'toolExecution', callId: 'call-1', toolCallId: 'tc-1' },
+      () => ({ type: 'toolExecution', callId: 'call-1', toolCallId: 'tc-1' }),
       async () => {
         captured = store.getStore();
         return 'tool-result';
@@ -99,7 +99,7 @@ describe('tracing channel context propagation', () => {
     let captured: { spanId: string } | undefined;
 
     const result = await trace(
-      { type: 'embed', callId: 'embed-1' },
+      () => ({ type: 'embed', callId: 'embed-1' }),
       async () => {
         captured = store.getStore();
         return 'embed-result';
@@ -116,7 +116,7 @@ describe('tracing channel context propagation', () => {
 
   it('runs function directly when no subscribers', async () => {
     const result = await trace(
-      { type: 'rerank', callId: 'rerank-1' },
+      () => ({ type: 'rerank', callId: 'rerank-1' }),
       async () => 'rerank-result',
     );
 

@@ -224,15 +224,17 @@ export async function rerank<VALUE extends JSONObject | string>({
           callbacks: [telemetryDispatcher.onRerankStart],
         });
 
-        const modelResponse = await trace({ type: 'rerank', callId }, () =>
-          model.doRerank({
-            documents: documentsToSend,
-            query,
-            topN,
-            providerOptions,
-            abortSignal,
-            headers,
-          }),
+        const modelResponse = await trace(
+          () => ({ type: 'rerank', callId }),
+          () =>
+            model.doRerank({
+              documents: documentsToSend,
+              query,
+              topN,
+              providerOptions,
+              abortSignal,
+              headers,
+            }),
         );
 
         const ranking = modelResponse.ranking;

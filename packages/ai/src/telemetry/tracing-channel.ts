@@ -49,13 +49,21 @@ export type TracingChannelContext =
   | { type: 'embed'; callId: string }
   | { type: 'rerank'; callId: string };
 
+// hasSubscribers is undefined on Node 18 (the aggregated getter doesn't exist).
+// Check !== false so we trace when unsure rather than silently skipping.
+function shouldTrace(
+  ch: TracingChannelLike | undefined | null,
+): ch is TracingChannelLike {
+  return ch != null && ch.hasSubscribers !== false;
+}
+
 export async function trace<T>(
-  context: TracingChannelContext,
+  contextFactory: () => TracingChannelContext,
   fn: () => PromiseLike<T>,
 ): Promise<T> {
   const ch = await getChannel();
-  if (ch != null && ch.hasSubscribers) {
-    return ch.tracePromise(fn, context);
+  if (shouldTrace(ch)) {
+    return ch.tracePromise(fn, contextFactory());
   }
   return fn();
 }

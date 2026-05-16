@@ -167,13 +167,15 @@ export async function embed({
           callbacks: [telemetryDispatcher.onEmbedStart],
         });
 
-        const modelResponse = await trace({ type: 'embed', callId }, () =>
-          model.doEmbed({
-            values: [value],
-            abortSignal,
-            headers: headersWithUserAgent,
-            providerOptions,
-          }),
+        const modelResponse = await trace(
+          () => ({ type: 'embed', callId }),
+          () =>
+            model.doEmbed({
+              values: [value],
+              abortSignal,
+              headers: headersWithUserAgent,
+              providerOptions,
+            }),
         );
 
         const embedding = modelResponse.embeddings[0];

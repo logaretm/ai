@@ -774,7 +774,7 @@ export async function generateText<
         const stepStartTimestampMs = now();
 
         currentModelResponse = await trace(
-          { type: 'languageModelCall', callId },
+          () => ({ type: 'languageModelCall', callId }),
           () =>
             retry(async () => {
               const result = await stepModel.doGenerate({

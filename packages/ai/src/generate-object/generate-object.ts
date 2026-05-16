@@ -353,22 +353,24 @@ export async function generateObject<
       callbacks: [onStepStart, telemetryDispatcher.onObjectStepStart],
     });
 
-    const generateResult = await trace({ type: 'objectStep', callId }, () =>
-      retry(() =>
-        model.doGenerate({
-          responseFormat: {
-            type: 'json',
-            schema: jsonSchema,
-            name: schemaName,
-            description: schemaDescription,
-          },
-          ...prepareLanguageModelCallOptions(settings),
-          prompt: promptMessages,
-          providerOptions,
-          abortSignal,
-          headers: headersWithUserAgent,
-        }),
-      ),
+    const generateResult = await trace(
+      () => ({ type: 'objectStep', callId }),
+      () =>
+        retry(() =>
+          model.doGenerate({
+            responseFormat: {
+              type: 'json',
+              schema: jsonSchema,
+              name: schemaName,
+              description: schemaDescription,
+            },
+            ...prepareLanguageModelCallOptions(settings),
+            prompt: promptMessages,
+            providerOptions,
+            abortSignal,
+            headers: headersWithUserAgent,
+          }),
+        ),
     );
 
     const responseData = {

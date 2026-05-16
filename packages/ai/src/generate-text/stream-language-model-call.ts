@@ -330,7 +330,7 @@ export async function streamLanguageModelCall<
     response,
     request,
   } = await trace(
-    { type: 'languageModelCall', callId: effectiveCallId },
+    () => ({ type: 'languageModelCall', callId: effectiveCallId }),
     async () =>
       resolvedModel.doStream({
         ...callSettings,
