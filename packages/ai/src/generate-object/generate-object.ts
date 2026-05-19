@@ -19,6 +19,7 @@ import type { RequestOptions } from '../prompt/request-options';
 import { standardizePrompt } from '../prompt/standardize-prompt';
 import { wrapGatewayError } from '../prompt/wrap-gateway-error';
 import { createTelemetryDispatcher } from '../telemetry/create-telemetry-dispatcher';
+import { trace } from '../telemetry/tracing-channel';
 import type { TelemetryOptions } from '../telemetry/telemetry-options';
 import type { LanguageModel } from '../types/language-model';
 import type { LanguageModelRequestMetadata } from '../types/language-model-request-metadata';
@@ -352,20 +353,24 @@ export async function generateObject<
       callbacks: [onStepStart, telemetryDispatcher.onObjectStepStart],
     });
 
-    const generateResult = await retry(() =>
-      model.doGenerate({
-        responseFormat: {
-          type: 'json',
-          schema: jsonSchema,
-          name: schemaName,
-          description: schemaDescription,
-        },
-        ...prepareLanguageModelCallOptions(settings),
-        prompt: promptMessages,
-        providerOptions,
-        abortSignal,
-        headers: headersWithUserAgent,
-      }),
+    const generateResult = await trace(
+      () => ({ type: 'objectStep', callId }),
+      () =>
+        retry(() =>
+          model.doGenerate({
+            responseFormat: {
+              type: 'json',
+              schema: jsonSchema,
+              name: schemaName,
+              description: schemaDescription,
+            },
+            ...prepareLanguageModelCallOptions(settings),
+            prompt: promptMessages,
+            providerOptions,
+            abortSignal,
+            headers: headersWithUserAgent,
+          }),
+        ),
     );
 
     const responseData = {

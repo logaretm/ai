@@ -7,6 +7,7 @@ import { logWarnings } from '../logger/log-warnings';
 import { resolveEmbeddingModel } from '../model/resolve-model';
 import { createTelemetryDispatcher } from '../telemetry/create-telemetry-dispatcher';
 import type { TelemetryOptions } from '../telemetry/telemetry-options';
+import { trace } from '../telemetry/tracing-channel';
 import type { Embedding, EmbeddingModel, ProviderMetadata } from '../types';
 import type { Warning } from '../types/warning';
 import type { Callback } from '../util/callback';
@@ -188,12 +189,16 @@ export async function embedMany({
             callbacks: [telemetryDispatcher.onEmbedStart],
           });
 
-          const modelResponse = await model.doEmbed({
-            values,
-            abortSignal,
-            headers: headersWithUserAgent,
-            providerOptions,
-          });
+          const modelResponse = await trace(
+            () => ({ type: 'embed', callId }),
+            () =>
+              model.doEmbed({
+                values,
+                abortSignal,
+                headers: headersWithUserAgent,
+                providerOptions,
+              }),
+          );
 
           const embeddings = modelResponse.embeddings;
           const usage = modelResponse.usage ?? { tokens: NaN };
@@ -290,12 +295,16 @@ export async function embedMany({
               callbacks: [telemetryDispatcher.onEmbedStart],
             });
 
-            const modelResponse = await model.doEmbed({
-              values: chunk,
-              abortSignal,
-              headers: headersWithUserAgent,
-              providerOptions,
-            });
+            const modelResponse = await trace(
+              () => ({ type: 'embed', callId }),
+              () =>
+                model.doEmbed({
+                  values: chunk,
+                  abortSignal,
+                  headers: headersWithUserAgent,
+                  providerOptions,
+                }),
+            );
 
             const chunkEmbeddings = modelResponse.embeddings;
             const usage = modelResponse.usage ?? { tokens: NaN };
